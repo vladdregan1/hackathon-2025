@@ -18,5 +18,13 @@ abstract class BaseController
         return $this->view->render($response, $template, $data);
     }
 
+    public function getCurrentUserData(): array
+    {
+        return [
+            'currentUserId' => $_SESSION['user_id'] ?? null,
+            'currentUserName' => $_SESSION['username'] ?? null,
+        ];
+    }
+
     // TODO: add here any common controller logic and use in concrete controllers
 }

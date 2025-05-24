@@ -28,15 +28,8 @@ class AuthController extends BaseController
         return $this->render($response, 'auth/register.twig');
     }
 
-    public function register(Request $request, Response $response): Response
+    public function emptyCheck(string $username, string $password, array $errors): array
     {
-        // TODO: call corresponding service to perform user registration
-        $data = (array) $request->getParsedBody();
-        $username = trim($data['username'] ?? '');
-        $password = trim($data['password'] ?? '');
-
-        $errors = [];
-
         if (empty($username)) {
             $errors['username'] = 'Username is required.';
         }
@@ -44,6 +37,29 @@ class AuthController extends BaseController
         if (empty($password)){
             $errors['password'] = 'Password is required.';
         }
+
+        return $errors;
+    }
+
+    public function getUserData(Request $request)
+    {
+        $data = (array) $request->getParsedBody();
+        return [
+            'username' => trim($data['username'] ?? ''),
+            'password' => trim($data['password'] ?? ''),
+        ];
+    }
+
+    public function register(Request $request, Response $response): Response
+    {
+        // TODO: call corresponding service to perform user registration
+        $userData = $this->getUserData($request);
+        $username = $userData['username'];
+        $password = $userData['password'];
+
+        $errors = [];
+
+        $errors = $this->emptyCheck($username, $password, $errors);
 
         if (strlen($username) < 4) {
             $errors['username'] = 'Username must be at least 4 characters long.';
@@ -91,6 +107,29 @@ class AuthController extends BaseController
     public function login(Request $request, Response $response): Response
     {
         // TODO: call corresponding service to perform user login, handle login failures
+        $userData = $this->getUserData($request);
+        $username = $userData['username'];
+        $password = $userData['password'];
+
+        $errors = [];
+
+        $errors = $this->emptyCheck($username, $password, $errors);
+
+        if (!empty($errors)){
+            return $this->render($response, 'auth/login.twig', [
+                'errors' => $errors,
+                'username' => $username
+            ]);
+        }
+
+        if (!$this->authService->attempt($username, $password)) {
+            $errors['general'] = 'Invalid username or password.';
+            return $this->render($response, 'auth/login.twig', [
+                'errors' => $errors,
+                'username' => $username
+            ]);
+        }
+
 
         return $response->withHeader('Location', '/')->withStatus(302);
     }
@@ -98,6 +137,8 @@ class AuthController extends BaseController
     public function logout(Request $request, Response $response): Response
     {
         // TODO: handle logout by clearing session data and destroying session
+
+        session_destroy();
 
         return $response->withHeader('Location', '/login')->withStatus(302);
     }

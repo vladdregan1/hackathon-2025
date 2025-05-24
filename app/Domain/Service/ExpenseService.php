@@ -19,7 +19,15 @@ class ExpenseService
     public function list(User $user, int $year, int $month, int $pageNumber, int $pageSize): array
     {
         // TODO: implement this and call from controller to obtain paginated list of expenses
-        return [];
+        $offset = ($pageNumber - 1) * $pageSize;
+
+        $criteria = [
+            'user_id' => $user->id,
+            'year' => $year,
+            'month' => $month,
+        ];
+
+        return $this->expenses->findBy($criteria, $offset, $pageSize);
     }
 
     public function create(
@@ -32,6 +40,15 @@ class ExpenseService
         // TODO: implement this to create a new expense entity, perform validation, and persist
 
         // TODO: here is a code sample to start with
+
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Amount must be greater than zero.');
+        }
+
+        if (empty($category)) {
+            throw new \InvalidArgumentException('Category is required.');
+        }
+
         $expense = new Expense(null, $user->id, $date, $category, (int)$amount, $description);
         $this->expenses->save($expense);
     }
@@ -53,4 +70,19 @@ class ExpenseService
 
         return 0; // number of imported rows
     }
+
+    public function count(User $user, int $year, int $month): int
+    {
+        return $this->expenses->countBy([
+            'user_id' => $user->id,
+            'year' => $year,
+            'month' => $month,
+        ]);
+    }
+
+    public function listExpenditureYears(User $user): array
+    {
+        return $this->expenses->listExpenditureYears($user);
+    }
+
 }

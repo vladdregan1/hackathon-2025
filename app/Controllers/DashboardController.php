@@ -28,12 +28,15 @@ class DashboardController extends BaseController
         // TODO: call service to compute category totals per selected year/month
         // TODO: call service to compute category averages per selected year/month
 
-        return $this->render($response, 'dashboard.twig', [
+
+
+        return $this->render($response, 'dashboard.twig', array_merge([
 
             'alerts'                => [],
             'totalForMonth'         => [],
             'totalsForCategories'   => [],
             'averagesForCategories' => [],
-        ]);
+        ],  $this->getCurrentUserData()));
+
     }
 }

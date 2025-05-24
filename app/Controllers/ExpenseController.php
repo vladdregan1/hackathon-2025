@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Domain\Service\ExpenseService;
+use App\Infrastructure\Persistence\PdoUserRepository;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
@@ -16,6 +17,7 @@ class ExpenseController extends BaseController
     public function __construct(
         Twig $view,
         private readonly ExpenseService $expenseService,
+        private readonly PdoUserRepository $pdoUserRepository,
     ) {
         parent::__construct($view);
     }
@@ -30,17 +32,37 @@ class ExpenseController extends BaseController
         // - use the expense service to fetch expenses for the current user
 
         // parse request parameters
-        $userId = 1; // TODO: obtain logged-in user ID from session
+        // TODO: obtain logged-in user ID from session
+        $userId = $_SESSION['user_id'] ?? null;
+        $user = $this->pdoUserRepository->find($userId);
+        $userData = $this->getCurrentUserData();
+
         $page = (int)($request->getQueryParams()['page'] ?? 1);
         $pageSize = (int)($request->getQueryParams()['pageSize'] ?? self::PAGE_SIZE);
 
-        $expenses = $this->expenseService->list($userId, $page, $pageSize);
+        $year = (int)($request->getQueryParams()['year'] ?? date('Y'));
+        $month = (int)($request->getQueryParams()['month'] ?? date('n'));
 
-        return $this->render($response, 'expenses/index.twig', [
+        $years = $this->expenseService->listExpenditureYears($user);
+
+
+        $totalCount = $this->expenseService->count($user, $year, $month);
+        $totalPages = (int)ceil($totalCount / $pageSize);
+
+        $expenses = $this->expenseService->list($user,$year, $month, $page, $pageSize);
+
+
+
+        return $this->render($response, 'expenses/index.twig', array_merge($userData, [
             'expenses' => $expenses,
             'page'     => $page,
             'pageSize' => $pageSize,
-        ]);
+            'total'    => $totalCount,
+            'totalPages' => $totalPages,
+            'year' => $year,
+            'month' => $month,
+            'years' => $years,
+        ]));
     }
 
     public function create(Request $request, Response $response): Response
@@ -49,9 +71,18 @@ class ExpenseController extends BaseController
 
         // Hints:
         // - obtain the list of available categories from configuration and pass to the view
+        $userData = $this->getCurrentUserData();
 
-        return $this->render($response, 'expenses/create.twig', ['categories' => []]);
+        $categories = [];
+
+        $data = array_merge($userData, [
+            'categories' => $categories,
+        ]);
+
+        return $this->render($response, 'expenses/create.twig', $data);
     }
+
+
 
     public function store(Request $request, Response $response): Response
     {
@@ -63,7 +94,48 @@ class ExpenseController extends BaseController
         // - rerender the "expenses.create" page with included errors in case of failure
         // - redirect to the "expenses.index" page in case of success
 
-        return $response;
+        $data = (array)$request->getParsedBody();
+        $userId = $_SESSION['user_id'] ?? null;
+        $user = $this->pdoUserRepository->find($userId);
+
+        $errors = [];
+        $amount = (float)$data['amount'] ?? null;
+        $description = $data['description'] ?? '';
+        $dateString = $data['date'] ?? '';
+        $category = $data['category'] ?? '';
+
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            $errors['amount'] = 'Amount must be a positive number.';
+        }
+
+        try {
+            $date = new \DateTimeImmutable($dateString);
+        } catch (\Exception) {
+            $errors['date'] = 'Invalid date format.';
+        }
+
+        if (empty($category)) {
+            $errors['category'] = 'Category is required.';
+        }
+
+        if (!empty($errors)) {
+            return $this->render($response, 'expenses/create.twig', [
+               'errors' => $errors,
+            ]);
+        }
+
+        try {
+            $this->expenseService->create($user, $amount, $description, $date, $category);
+            return $response->withHeader('Location','/expenses');
+        }catch (\Exception $e){
+            $errors['general'] = 'An error occured while saving the expense.';
+            return $this->render($response, 'expenses/create.twig', [
+                'errors' => $errors,
+            ]);
+        }
+
+
+
     }
 
     public function edit(Request $request, Response $response, array $routeParams): Response
@@ -106,4 +178,5 @@ class ExpenseController extends BaseController
 
         return $response;
     }
+
 }
