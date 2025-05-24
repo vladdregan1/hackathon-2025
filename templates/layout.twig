@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Budget Tracker{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100 flex flex-col w-screen">
+<nav class="bg-gray-800 shadow mb-6 w-full">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between">
+        <div><a href="/" class="font-bold text-xl text-white">Budget Tracker</a></div>
+        <div>
+            {% if currentUserId %}
+                <a href="/" class="mr-4 text-gray-300 hover:text-white inline-flex items-center">Dashboard</a>
+                <a href="/expenses" class="mr-4 text-gray-300 hover:text-white inline-flex items-center">Expenses</a>
+                <div class="border-l border-gray-700 mx-4 h-6 inline-block align-middle"></div>
+                <span class="text-gray-500 mr-2">{{ currentUserName|default('User') }}</span>
+                <form action="/logout" method="GET" class="inline">
+                    <button type="submit" class="text-gray-300 hover:text-white">Logout</button>
+                </form>
+            {% else %}
+                <a href="/login" class="mr-4 text-gray-300 hover:text-white">Login</a>
+                <a href="/register" class="text-gray-300 hover:text-white">Register</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-5xl mx-auto px-4 flex-grow w-full">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<footer class="bg-gray-800 h-8 flex items-center justify-center text-white w-full">
+    (c) Evozon Hackathon 2025
+</footer>
+</body>
+</html>

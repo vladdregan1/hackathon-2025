@@ -1,0 +1,9 @@
+"2025-05-01 18:00:00",100.00,"Weekly food",Groceries
+"2025-05-02 10:00:00",80.00,"Diesel refill",Transport
+"2025-05-03 21:00:00",30.50,"Night out",Entertainment
+"2025-05-03 21:00:00",30.50,"Night out",Entertainment
+"2025-05-03 21:00:00",30.50,"",Entertainment
+"2025-05-03 21:00:00",30.50,"This should be skipped because of unknown category",Abracadabra
+"2025-05-04 12:30:00",55.00,"Paid the gas bill",Utilities
+"2025-05-05 11:00:00",35.25,"Paid the electricity bill",Utilities
+"2025-05-05 19:00:00",20.00,"Pizza and nachos",Groceries

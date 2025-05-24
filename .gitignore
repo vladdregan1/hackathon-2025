@@ -1,0 +1,7 @@
+.idea
+.env
+.phpunit.result.cache
+vendor
+database/db.sqlite
+var/*
+!var/.gitkeep
