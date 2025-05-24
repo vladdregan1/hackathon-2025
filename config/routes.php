@@ -26,7 +26,7 @@ return static function (App $app) {
         });
     })
         // The middleware below ensures that only a logged-in user has access to the firewalled routes
-        ->add(function ($request, $handler) {
+       ->add(function ($request, $handler) {
             if (!isset($_SESSION['user_id'])) {
                 return (new Response())->withHeader('Location', '/login')->withStatus(302);
             }

@@ -31,8 +31,56 @@ class AuthController extends BaseController
     public function register(Request $request, Response $response): Response
     {
         // TODO: call corresponding service to perform user registration
+        $data = (array) $request->getParsedBody();
+        $username = trim($data['username'] ?? '');
+        $password = trim($data['password'] ?? '');
 
-        return $response->withHeader('Location', '/login')->withStatus(302);
+        $errors = [];
+
+        if (empty($username)) {
+            $errors['username'] = 'Username is required.';
+        }
+
+        if (empty($password)){
+            $errors['password'] = 'Password is required.';
+        }
+
+        if (strlen($username) < 4) {
+            $errors['username'] = 'Username must be at least 4 characters long.';
+        }
+
+        if (strlen($password) < 8) {
+            $errors['password'] = 'Password must be at least 8 characters long.';
+        }
+
+        if (!preg_match('/\d/', $password)) {
+            $errors['password'] = 'Password must contain at least 1 number.';
+        }
+
+        if (!empty($errors)){
+            return $this->render($response, 'auth/register.twig', [
+                'errors' => $errors,
+                'username' => $username,
+                'password' => $password
+            ]);
+        }
+
+        try {
+            $this->authService->register($username, $password);
+            $this->logger->info('User registered: ' . $username);
+
+
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        } catch (\Exception $e) {
+            $this->logger->error('Registration error: ' . $e->getMessage());
+            $errors['username'] = $e->getMessage();
+
+            return $this->render($response, 'auth/register.twig', [
+                'errors' => $errors,
+                'username' => $username,
+                'password' => $password
+            ]);
+        }
     }
 
     public function showLogin(Request $request, Response $response): Response

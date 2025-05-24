@@ -17,9 +17,15 @@ class AuthService
     {
         // TODO: check that a user with same username does not exist, create new user and persist
         // TODO: make sure password is not stored in plain, and proper PHP functions are used for that
-
         // TODO: here is a sample code to start with
-        $user = new User(null, $username, $password, new \DateTimeImmutable());
+        $existingUser = $this->users->findByUsername($username);
+        if ($existingUser != null){
+            throw new \Exception('Username ' . $username . ' is already taken.');
+        }
+
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        $user = new User(null, $username, $hashedPassword, new \DateTimeImmutable());
         $this->users->save($user);
 
         return $user;
