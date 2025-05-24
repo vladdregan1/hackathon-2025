@@ -7,6 +7,7 @@ namespace App\Domain\Service;
 use App\Domain\Entity\Expense;
 use App\Domain\Entity\User;
 use App\Domain\Repository\ExpenseRepositoryInterface;
+use App\Validators\ExpenseValidator;
 use DateTimeImmutable;
 use Psr\Http\Message\UploadedFileInterface;
 
@@ -41,15 +42,20 @@ class ExpenseService
 
         // TODO: here is a code sample to start with
 
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('Amount must be greater than zero.');
-        }
+        $data = [
+            'amount' => $amount,
+            'category' => $category,
+            'description' => $description,
+            'date' => $date->format('Y-m-d'),
+        ];
 
-        if (empty($category)) {
-            throw new \InvalidArgumentException('Category is required.');
+        $errors = ExpenseValidator::validateExpenseData($data);
+        if (!empty($errors)) {
+            throw new \InvalidArgumentException('Invalid data provided for update.');
         }
+        $amountCents = (int) round($amount * 100);
+        $expense = new Expense(null, $user->id, $date, $category, $amountCents, $description);
 
-        $expense = new Expense(null, $user->id, $date, $category, (int)$amount, $description);
         $this->expenses->save($expense);
     }
 
@@ -61,6 +67,24 @@ class ExpenseService
         string $category,
     ): void {
         // TODO: implement this to update expense entity, perform validation, and persist
+
+        $data = [
+            'amount' => $amount,
+            'category' => $category,
+            'description' => $description,
+            'date' => $date->format('Y-m-d'),
+        ];
+
+        $errors = ExpenseValidator::validateExpenseData($data);
+        if (!empty($errors)) {
+            throw new \InvalidArgumentException('Invalid data provided for update.');
+        }
+        $expense->amountCents = (int)round($amount * 100);
+        $expense->description = $description;
+        $expense->date = $date;
+        $expense->category = $category;
+
+        $this->expenses->save($expense);
     }
 
     public function importFromCsv(User $user, UploadedFileInterface $csvFile): int
@@ -83,6 +107,11 @@ class ExpenseService
     public function listExpenditureYears(User $user): array
     {
         return $this->expenses->listExpenditureYears($user);
+    }
+
+    public function getExpenseById (int $id): Expense
+    {
+        return $this->expenses->find($id);
     }
 
 }

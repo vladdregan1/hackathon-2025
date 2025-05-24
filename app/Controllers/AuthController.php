@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Domain\Service\AuthService;
+use App\Validators\AuthValidator;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Log\LoggerInterface;
@@ -28,18 +29,6 @@ class AuthController extends BaseController
         return $this->render($response, 'auth/register.twig');
     }
 
-    public function emptyCheck(string $username, string $password, array $errors): array
-    {
-        if (empty($username)) {
-            $errors['username'] = 'Username is required.';
-        }
-
-        if (empty($password)){
-            $errors['password'] = 'Password is required.';
-        }
-
-        return $errors;
-    }
 
     public function getUserData(Request $request)
     {
@@ -57,21 +46,7 @@ class AuthController extends BaseController
         $username = $userData['username'];
         $password = $userData['password'];
 
-        $errors = [];
-
-        $errors = $this->emptyCheck($username, $password, $errors);
-
-        if (strlen($username) < 4) {
-            $errors['username'] = 'Username must be at least 4 characters long.';
-        }
-
-        if (strlen($password) < 8) {
-            $errors['password'] = 'Password must be at least 8 characters long.';
-        }
-
-        if (!preg_match('/\d/', $password)) {
-            $errors['password'] = 'Password must contain at least 1 number.';
-        }
+        $errors = AuthValidator::validateAuthData($userData);
 
         if (!empty($errors)){
             return $this->render($response, 'auth/register.twig', [
@@ -112,15 +87,6 @@ class AuthController extends BaseController
         $password = $userData['password'];
 
         $errors = [];
-
-        $errors = $this->emptyCheck($username, $password, $errors);
-
-        if (!empty($errors)){
-            return $this->render($response, 'auth/login.twig', [
-                'errors' => $errors,
-                'username' => $username
-            ]);
-        }
 
         if (!$this->authService->attempt($username, $password)) {
             $errors['general'] = 'Invalid username or password.';

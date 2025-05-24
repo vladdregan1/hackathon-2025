@@ -36,18 +36,34 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
     public function save(Expense $expense): void
     {
         // TODO: Implement save() method.
-        $query = 'INSERT INTO expenses (user_id, date, category, amount_cents, description) 
-                    VALUES (:user_id, :date, :category, :amount_cents, :description)';
-
-        $statement = $this->pdo->prepare($query);
-
-        $statement->execute([
+        $params = [
             'user_id' => $expense->userId,
             'date' => $expense->date->format('Y-m-d H:i:s'),
             'category' => $expense->category,
             'amount_cents' => $expense->amountCents,
             'description' => $expense->description,
-        ]);
+        ];
+
+        if ($expense->id === null) {
+
+            $query = 'INSERT INTO expenses (user_id, date, category, amount_cents, description) 
+                    VALUES (:user_id, :date, :category, :amount_cents, :description)';
+
+            $statement = $this->pdo->prepare($query);
+            $statement->execute($params);
+        }else {
+            $query = 'UPDATE expenses SET user_id = :user_id, date = :date, category = :category,
+                      amount_cents = :amount_cents, description = :description WHERE id = :id';
+
+            $params['id'] = $expense->id;
+            $statement = $this->pdo->prepare($query);
+            $statement->execute($params);
+        }
+    }
+
+    public function saveUpdate(Expense $expense): void
+    {
+
     }
 
     public function delete(int $id): void
@@ -91,6 +107,7 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         }
         return $results;
     }
+
 
 
     public function countBy(array $criteria): int

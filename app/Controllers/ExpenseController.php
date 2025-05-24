@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Domain\Repository\UserRepositoryInterface;
 use App\Domain\Service\ExpenseService;
 use App\Infrastructure\Persistence\PdoUserRepository;
+use App\Validators\ExpenseValidator;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
@@ -17,7 +19,7 @@ class ExpenseController extends BaseController
     public function __construct(
         Twig $view,
         private readonly ExpenseService $expenseService,
-        private readonly PdoUserRepository $pdoUserRepository,
+        private readonly UserRepositoryInterface $userRepository,
     ) {
         parent::__construct($view);
     }
@@ -34,7 +36,7 @@ class ExpenseController extends BaseController
         // parse request parameters
         // TODO: obtain logged-in user ID from session
         $userId = $_SESSION['user_id'] ?? null;
-        $user = $this->pdoUserRepository->find($userId);
+        $user = $this->userRepository->find($userId);
         $userData = $this->getCurrentUserData();
 
         $page = (int)($request->getQueryParams()['page'] ?? 1);
@@ -65,6 +67,21 @@ class ExpenseController extends BaseController
         ]));
     }
 
+    public function getCategories(): array
+    {
+        $categories = [
+            'groceries' => 'Groceries',
+            'utilities' => 'Utilities',
+            'transport' => 'Transport',
+            'entertainment' => 'Entertainment',
+            'housing' => 'Housing',
+            'health' => 'Healthcare',
+            'other' => 'Other',
+        ];
+
+        return $categories;
+    }
+
     public function create(Request $request, Response $response): Response
     {
         // TODO: implement this action method to display the create expense page
@@ -73,7 +90,7 @@ class ExpenseController extends BaseController
         // - obtain the list of available categories from configuration and pass to the view
         $userData = $this->getCurrentUserData();
 
-        $categories = [];
+        $categories = $this->getCategories();
 
         $data = array_merge($userData, [
             'categories' => $categories,
@@ -81,6 +98,8 @@ class ExpenseController extends BaseController
 
         return $this->render($response, 'expenses/create.twig', $data);
     }
+
+
 
 
 
@@ -96,41 +115,35 @@ class ExpenseController extends BaseController
 
         $data = (array)$request->getParsedBody();
         $userId = $_SESSION['user_id'] ?? null;
-        $user = $this->pdoUserRepository->find($userId);
+        $user = $this->userRepository->find($userId);
 
-        $errors = [];
-        $amount = (float)$data['amount'] ?? null;
+        $errors = ExpenseValidator::validateExpenseData($data);
+
+        $amountFloat = (float)($data['amount'] ?? 0);
         $description = $data['description'] ?? '';
         $dateString = $data['date'] ?? '';
         $category = $data['category'] ?? '';
+        $date = new \DateTimeImmutable($data['date']);
+        $categories = $this->getCategories();
 
-        if (!is_numeric($amount) || (float)$amount <= 0) {
-            $errors['amount'] = 'Amount must be a positive number.';
-        }
-
-        try {
-            $date = new \DateTimeImmutable($dateString);
-        } catch (\Exception) {
-            $errors['date'] = 'Invalid date format.';
-        }
-
-        if (empty($category)) {
-            $errors['category'] = 'Category is required.';
-        }
 
         if (!empty($errors)) {
-            return $this->render($response, 'expenses/create.twig', [
-               'errors' => $errors,
+            $userData = $this->getCurrentUserData();
+            $transferData = array_merge($userData, [
+                'errors' => $errors,
+                'categories' => $categories,
             ]);
+            return $this->render($response, 'expenses/create.twig', $transferData);
         }
 
         try {
-            $this->expenseService->create($user, $amount, $description, $date, $category);
-            return $response->withHeader('Location','/expenses');
+            $this->expenseService->create($user, $amountFloat, $description, $date, $category);
+            return $response->withHeader('Location','/expenses')->withStatus(302);
         }catch (\Exception $e){
             $errors['general'] = 'An error occured while saving the expense.';
             return $this->render($response, 'expenses/create.twig', [
                 'errors' => $errors,
+                'categories' => $categories,
             ]);
         }
 
@@ -147,9 +160,76 @@ class ExpenseController extends BaseController
         // - load the expense to be edited by its ID (use route params to get it)
         // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
 
-        $expense = ['id' => 1];
+        $expenseId = (int)($routeParams['id'] ?? 0);
 
-        return $this->render($response, 'expenses/edit.twig', ['expense' => $expense, 'categories' => []]);
+        if ($expenseId <= 0) {
+            return $response->withStatus(404);
+        }
+
+        $expense = $this->expenseService->getExpenseById($expenseId);
+
+        if (!$expense){
+            return $response->withStatus(404);
+        }
+
+        $userId = $_SESSION['user_id'] ?? null;
+        if ($expense->userId !== $userId) {
+            return $response->withStatus(403);
+        }
+
+        $categories = $this->getCategories();
+
+
+        $amountFloat = $expense->amountCents / 100;
+
+        $userData = $this->getCurrentUserData();
+
+        $categories = $this->getCategories();
+
+        $data =array_merge($userData,[
+            'expense' => [
+                'id' => $expense->id,
+                'amount' => number_format($amountFloat, 2, '.', ''),
+                'description' => $expense->description,
+                'date' => $expense->date->format('Y-m-d'),
+                'category' => $expense->category,
+            ],
+            'categories' => $categories,
+        ]);
+
+
+
+
+        return $this->render($response, 'expenses/edit.twig', $data);
+    }
+
+    private function renderEditWithErrors(Response $response, $expense, array $data, array $categories, array $errors): Response
+    {
+        $userData = $this->getCurrentUserData();
+        $data = array_merge($userData, [
+            'expense' => [
+                'id' => $expense->id,
+                'amount' => $data['amount'] ?? '',
+                'description' => $data['description'] ?? '',
+                'date' => $data['date'] ?? '',
+                'category' => $data['category'] ?? '',
+            ],
+            'categories' => $categories,
+            'errors' => $errors,
+        ]);
+        return $this->render($response, 'expenses/edit.twig', $data);
+    }
+
+    private function getExpenseIdFromRoute(array $routeParams): ?int
+    {
+        $expenseId = (int)($routeParams['id'] ?? 0);
+        return $expenseId > 0 ? $expenseId : null;
+    }
+
+    private function isOwner($expense): bool
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        return $expense->userId === $userId;
     }
 
     public function update(Request $request, Response $response, array $routeParams): Response
@@ -163,6 +243,41 @@ class ExpenseController extends BaseController
         // - update the expense entity with the new values
         // - rerender the "expenses.edit" page with included errors in case of failure
         // - redirect to the "expenses.index" page in case of success
+
+        $expenseId = $this->getExpenseIdFromRoute($routeParams);
+        if ($expenseId === null) {
+            return $response->withStatus(404);
+        }
+
+        $expense = $this->expenseService->getExpenseById($expenseId);
+        if (!$expense){
+            return $response->withStatus(404);
+        }
+
+        if (!$this->isOwner($expense)) {
+            return $response->withStatus(403);
+        }
+
+        $data = (array)$request->getParsedBody();
+        $errors = ExpenseValidator::validateExpenseData($data);
+        $categories = $this->getCategories();
+
+        if (!empty($errors)) {
+            return $this->renderEditWithErrors($response, $expense, $data, $categories, $errors);
+        }
+
+        $amountFloat = (float)($data['amount'] ?? 0);
+        $description = $data['description'];
+        $category = $data['category'];
+        $date = new \DateTimeImmutable($data['date']);
+
+        try {
+            $this->expenseService->update($expense, $amountFloat, $description, $date, $category);
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        } catch (\Exception $e) {
+            $errors['general'] = 'An error occurred while updating the expense.';
+            return $this->renderEditWithErrors($response, $expense, $data, $categories, $errors);
+        }
 
         return $response;
     }
