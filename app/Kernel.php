@@ -1,11 +1,17 @@
 <?php
 
+
+
+
 declare(strict_types=1);
 
 namespace App;
 
+use App\Domain\Service\AlertGenerator;
+use App\Domain\Service\MonthlySummaryService;
 use App\Domain\Repository\ExpenseRepositoryInterface;
 use App\Domain\Repository\UserRepositoryInterface;
+use App\Domain\Service\CategoryBudgetProvider;
 use App\Infrastructure\Persistence\PdoExpenseRepository;
 use App\Infrastructure\Persistence\PdoUserRepository;
 use DI\ContainerBuilder;
@@ -60,6 +66,23 @@ class Kernel
             // Map interfaces to concrete implementations
             UserRepositoryInterface::class    => autowire(PdoUserRepository::class),
             ExpenseRepositoryInterface::class => autowire(PdoExpenseRepository::class),
+
+            CategoryBudgetProvider::class => function () {
+                return new CategoryBudgetProvider($_ENV['CATEGORIES_BUDGETS']);
+            },
+
+            MonthlySummaryService::class => function($c) {
+                return new MonthlySummaryService($c->get(ExpenseRepositoryInterface::class));
+            },
+
+            AlertGenerator::class => function($c) {
+                return new AlertGenerator(
+                    $c->get(CategoryBudgetProvider::class),
+                    $c->get(MonthlySummaryService::class),
+                );
+            },
+
+
         ]);
         $container = $builder->build();
 

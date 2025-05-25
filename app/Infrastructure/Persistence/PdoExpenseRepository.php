@@ -139,22 +139,93 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         return $years;
     }
 
+    private function applyDateCriteria(string $query, array $params, array $criteria): array
+    {
+        if (isset($criteria['year'])) {
+            $query .= " AND strftime('%Y', date) = :year";
+            $params['year'] = (string)$criteria['year'];
+        }
+
+        if (isset($criteria['month'])) {
+            $query .= " AND strftime('%m', date) = :month";
+            $params['month'] = str_pad((string)$criteria['month'], 2, '0', STR_PAD_LEFT);
+        }
+
+        return [$query, $params];
+    }
+
+    private function fetchCategoryAmounts(\PDOStatement $statement, string $valueColumn): array
+    {
+        $results = [];
+        while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+            $results[$row['category']] = (float)($row[$valueColumn] / 100);
+        }
+        return $results;
+    }
+
+
+    private function bindParams(\PDOStatement $statement, array $params): void
+    {
+        foreach ($params as $key => $val) {
+                $statement->bindValue(":$key", $val);
+        }
+    }
+
+
+
     public function sumAmountsByCategory(array $criteria): array
     {
         // TODO: Implement sumAmountsByCategory() method.
-        return [];
+        $query = "SELECT category, SUM(amount_cents) AS total_cents FROM expenses WHERE user_id = :user_id";
+        $params = ['user_id' => $criteria['user_id']];
+
+        [$query, $params] = $this->applyDateCriteria($query, $params, $criteria);
+
+        $query .= " GROUP BY category";
+        $statement = $this->pdo->prepare($query);
+
+        $this->bindParams($statement, $params);
+
+        $statement->execute();
+        return $this->fetchCategoryAmounts($statement, 'total_cents');
     }
 
     public function averageAmountsByCategory(array $criteria): array
     {
         // TODO: Implement averageAmountsByCategory() method.
-        return [];
+        $query = "SELECT category, AVG(amount_cents) AS average_cents FROM expenses WHERE user_id = :user_id";
+        $params = ['user_id' => $criteria['user_id']];
+
+        [$query, $params] = $this->applyDateCriteria($query, $params, $criteria);
+
+        $query .= " GROUP BY category";
+        $statement = $this->pdo->prepare($query);
+        $this->bindParams($statement, $params);
+        $statement->execute();
+
+        return $this->fetchCategoryAmounts($statement, 'average_cents');
     }
 
     public function sumAmounts(array $criteria): float
     {
         // TODO: Implement sumAmounts() method.
-        return 0;
+        $query = "SELECT SUM(amount_cents) AS total_cents FROM expenses WHERE user_id = :user_id";
+        $params = ['user_id' => $criteria['user_id']];
+
+        [$query, $params] = $this->applyDateCriteria($query, $params, $criteria);
+
+        $statement = $this->pdo->prepare($query);
+
+        $this->bindParams($statement, $params);
+
+        $statement->execute();
+        $totalCents = $statement->fetchColumn();
+
+        if ($totalCents === null) {
+            return 0;
+        }
+
+        return $totalCents/100;
     }
 
     /**
