@@ -51,6 +51,8 @@ class ExpenseController extends BaseController
         $totalPages = (int)ceil($totalCount / $pageSize);
 
         $expenses = $this->expenseService->list($user,$year, $month, $page, $pageSize);
+        $flashMessage = $_SESSION['flash_message'] ?? null;
+        unset($_SESSION['flash_message']);
 
 
 
@@ -63,6 +65,7 @@ class ExpenseController extends BaseController
             'year' => $year,
             'month' => $month,
             'years' => $years,
+            'flash_message' => $flashMessage,
         ]));
     }
 
@@ -285,8 +288,10 @@ class ExpenseController extends BaseController
 
         try {
             $this->expenseService->deleteExpense($expenseId);
+            $_SESSION['flash_message'] = 'Expense deleted successfully.';
             return $response->withHeader('Location', '/expenses')->withStatus(302);
         } catch (\Exception $e) {
+            $_SESSION['flash_message'] = 'Failed to delete expense.';
             $response->getBody()->write('An error occured while deleting the expense.');
             return $response->withStatus(500);
         }

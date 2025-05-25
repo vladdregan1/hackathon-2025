@@ -36,6 +36,7 @@ class AuthController extends BaseController
         return [
             'username' => trim($data['username'] ?? ''),
             'password' => trim($data['password'] ?? ''),
+            'password_confirm' => trim($data['password_confirm'] ?? ''),
         ];
     }
 
@@ -45,8 +46,13 @@ class AuthController extends BaseController
         $userData = $this->getUserData($request);
         $username = $userData['username'];
         $password = $userData['password'];
+        $passwordConfirm = $userData['password_confirm'];
 
         $errors = AuthValidator::validateAuthData($userData);
+
+        if ($password != $passwordConfirm){
+            $errors['password_confirm'] = 'Passwords do not match.';
+        }
 
         if (!empty($errors)){
             return $this->render($response, 'auth/register.twig', [
