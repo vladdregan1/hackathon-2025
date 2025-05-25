@@ -8,9 +8,7 @@ use App\Domain\Entity\User;
 
 class AlertGenerator
 {
-    // TODO: refactor the array below and make categories and their budgets configurable in .env
-    // Hint: store them as JSON encoded in .env variable, inject them manually in a dedicated service,
-    // then inject and use use that service wherever you need category/budgets information.
+
 
     private CategoryBudgetProvider $budgetProvider;
     private MonthlySummaryService $summaryService;
@@ -23,14 +21,14 @@ class AlertGenerator
         $this->summaryService = $summaryService;
     }
 
-    function capitalizeKey(string $key): string {
+    public function capitalizeKey(string $key): string {
         return ucfirst(strtolower($key));
     }
 
 
     public function generate(User $user, int $year, int $month): array
     {
-        // TODO: implement this to generate alerts for overspending by category
+
 
         $budgets = $this->budgetProvider->getBudgets();
         $totals = $this->summaryService->computePerCategoryTotals($user, $year, $month);

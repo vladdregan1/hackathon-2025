@@ -21,7 +21,7 @@ class ExpenseService
 
     public function list(User $user, int $year, int $month, int $pageNumber, int $pageSize): array
     {
-        // TODO: implement this and call from controller to obtain paginated list of expenses
+
         $offset = ($pageNumber - 1) * $pageSize;
 
         $criteria = [
@@ -40,9 +40,6 @@ class ExpenseService
         DateTimeImmutable $date,
         string $category,
     ): void {
-        // TODO: implement this to create a new expense entity, perform validation, and persist
-
-        // TODO: here is a code sample to start with
 
         $data = [
             'amount' => $amount,
@@ -68,7 +65,6 @@ class ExpenseService
         DateTimeImmutable $date,
         string $category,
     ): void {
-        // TODO: implement this to update expense entity, perform validation, and persist
 
         $data = [
             'amount' => $amount,
@@ -91,8 +87,6 @@ class ExpenseService
 
     public function importFromCsv(User $user, UploadedFileInterface $csvFile): int
     {
-        // TODO: process rows in file stream, create and persist entities
-        // TODO: for extra points wrap the whole import in a transaction and rollback only in case writing to DB fails
 
         $handle = $this->prepareStream($csvFile);
         $importedCount = 0;
@@ -128,6 +122,7 @@ class ExpenseService
         $seenRows[$hash] = true;
 
         $data = $this->parseCsvRow($row);
+
 
         if (!$this->isValidCategory($data['category'])) {
             $skippedRows[] = ['reason' => 'invalid category', 'row' => $row];
@@ -208,7 +203,7 @@ class ExpenseService
 
     public function getCategories(): array
     {
-        $categories = [
+        return [
             'groceries' => 'Groceries',
             'utilities' => 'Utilities',
             'transport' => 'Transport',
@@ -218,7 +213,6 @@ class ExpenseService
             'other' => 'Other',
         ];
 
-        return $categories;
     }
 
     private function prepareStream(UploadedFileInterface $csvFile)

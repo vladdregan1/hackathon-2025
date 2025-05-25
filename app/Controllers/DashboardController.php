@@ -16,7 +16,6 @@ class DashboardController extends BaseController
 {
     public function __construct(
         Twig $view,
-        // TODO: add necessary services here and have them injected by the DI container
         private readonly ExpenseService $expenseService,
         private readonly UserRepositoryInterface $userRepository,
         private readonly MonthlySummaryService $monthlySummaryService,
@@ -28,13 +27,6 @@ class DashboardController extends BaseController
 
     public function index(Request $request, Response $response): Response
     {
-        // TODO: parse the request parameters
-        // TODO: load the currently logged-in user
-        // TODO: get the list of available years for the year-month selector
-        // TODO: call service to generate the overspending alerts for current month
-        // TODO: call service to compute total expenditure per selected year/month
-        // TODO: call service to compute category totals per selected year/month
-        // TODO: call service to compute category averages per selected year/month
         $userId = $_SESSION['user_id'] ?? null;
         $user = $this->userRepository->find($userId);
 
@@ -50,8 +42,8 @@ class DashboardController extends BaseController
             $totalForMonth = $this->monthlySummaryService->computeTotalExpenditure($user, $year, $month);
             $rawCategoryTotals = $this->monthlySummaryService->computePerCategoryTotals($user, $year, $month);
             $totalForCategories = $this->addCategoryPercentages($rawCategoryTotals, $totalForMonth);
-            $averagesCategoriesRaw = $this->monthlySummaryService->computePerCategoryAverages($user, $year, $month);
-            $averagesCategories = $this->addCategoryPercentagesForAverages($averagesCategoriesRaw);
+            $avgCategoriesRaw = $this->monthlySummaryService->computePerCategoryAverages($user, $year, $month);
+            $averagesCategories = $this->addCategoryPercentagesForAverages($avgCategoriesRaw);
             $alerts = $this->alertGenerator->generate($user, $year, $month);
         }
 

@@ -25,15 +25,7 @@ class ExpenseController extends BaseController
 
     public function index(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to display the expenses page
 
-        // Hints:
-        // - use the session to get the current user ID
-        // - use the request query parameters to determine the page number and page size
-        // - use the expense service to fetch expenses for the current user
-
-        // parse request parameters
-        // TODO: obtain logged-in user ID from session
         $userId = $_SESSION['user_id'] ?? null;
         $user = $this->userRepository->find($userId);
         $userData = $this->getCurrentUserData();
@@ -72,10 +64,7 @@ class ExpenseController extends BaseController
 
     public function create(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to display the create expense page
 
-        // Hints:
-        // - obtain the list of available categories from configuration and pass to the view
         $userData = $this->getCurrentUserData();
 
         $categories = $this->expenseService->getCategories();
@@ -93,13 +82,7 @@ class ExpenseController extends BaseController
 
     public function store(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to create a new expense
 
-        // Hints:
-        // - use the session to get the current user ID
-        // - use the expense service to create and persist the expense entity
-        // - rerender the "expenses.create" page with included errors in case of failure
-        // - redirect to the "expenses.index" page in case of success
 
         $data = (array)$request->getParsedBody();
         $userId = $_SESSION['user_id'] ?? null;
@@ -109,7 +92,6 @@ class ExpenseController extends BaseController
 
         $amountFloat = (float)($data['amount'] ?? 0);
         $description = $data['description'] ?? '';
-        $dateString = $data['date'] ?? '';
         $category = $data['category'] ?? '';
         $date = new \DateTimeImmutable($data['date']);
         $categories = $this->expenseService->getCategories();
@@ -141,12 +123,7 @@ class ExpenseController extends BaseController
 
     public function edit(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to display the edit expense page
 
-        // Hints:
-        // - obtain the list of available categories from configuration and pass to the view
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
 
         $expenseId = (int)($routeParams['id'] ?? 0);
 
@@ -222,15 +199,7 @@ class ExpenseController extends BaseController
 
     public function update(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to update an existing expense
 
-        // Hints:
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
-        // - get the new values from the request and prepare for update
-        // - update the expense entity with the new values
-        // - rerender the "expenses.edit" page with included errors in case of failure
-        // - redirect to the "expenses.index" page in case of success
 
         $expenseId = $this->getExpenseIdFromRoute($routeParams);
         if ($expenseId === null) {
@@ -272,12 +241,7 @@ class ExpenseController extends BaseController
 
     public function destroy(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to delete an existing expense
 
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
-        // - call the repository method to delete the expense
-        // - redirect to the "expenses.index" page
 
         $expenseId = $this->getExpenseIdFromRoute($routeParams);
         $expense = $this->expenseService->getExpenseById($expenseId);

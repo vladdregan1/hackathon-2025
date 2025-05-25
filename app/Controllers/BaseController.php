@@ -25,6 +25,4 @@ abstract class BaseController
             'currentUserName' => $_SESSION['username'] ?? null,
         ];
     }
-
-    // TODO: add here any common controller logic and use in concrete controllers
 }

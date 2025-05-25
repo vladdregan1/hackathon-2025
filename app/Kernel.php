@@ -92,11 +92,6 @@ class Kernel
         $app->add(TwigMiddleware::createFromContainer($app, Twig::class));
         (require __DIR__.'/../config/settings.php')($app);
         (require __DIR__.'/../config/routes.php')($app);
-
-        // TODO: Handle session initialization
-
-        // Make current user ID globally available to twig templates
-        // TODO: change the following line to set the user ID stored in the session, for when user is logged
         $loggedInUserId = null;
         $twig = $container->get(Twig::class);
         $twig->getEnvironment()->addGlobal('currentUserId', $loggedInUserId);

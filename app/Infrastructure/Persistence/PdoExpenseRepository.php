@@ -35,7 +35,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function save(Expense $expense): void
     {
-        // TODO: Implement save() method.
         $params = [
             'user_id' => $expense->userId,
             'date' => $expense->date->format('Y-m-d H:i:s'),
@@ -70,7 +69,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function findBy(array $criteria, int $from, int $limit): array
     {
-        // TODO: Implement findBy() method.
         $query = "SELECT * FROM expenses WHERE user_id = :user_id";
         $params = ['user_id' => $criteria['user_id']];
 
@@ -108,7 +106,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function countBy(array $criteria): int
     {
-        // TODO: Implement countBy() method.
 
         $query = "SELECT COUNT(*) FROM expenses WHERE user_id = :user_id AND strftime('%Y', date) = :year AND strftime('%m', date) = :month";
         $statement = $this->pdo->prepare($query);
@@ -122,7 +119,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function listExpenditureYears(User $user): array
     {
-        // TODO: Implement listExpenditureYears() method.
         $query = "SELECT DISTINCT strftime('%Y', date) AS year
               FROM expenses
               WHERE user_id = :user_id
@@ -175,7 +171,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function sumAmountsByCategory(array $criteria): array
     {
-        // TODO: Implement sumAmountsByCategory() method.
         $query = "SELECT category, SUM(amount_cents) AS total_cents FROM expenses WHERE user_id = :user_id";
         $params = ['user_id' => $criteria['user_id']];
 
@@ -192,7 +187,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function averageAmountsByCategory(array $criteria): array
     {
-        // TODO: Implement averageAmountsByCategory() method.
         $query = "SELECT category, AVG(amount_cents) AS average_cents FROM expenses WHERE user_id = :user_id";
         $params = ['user_id' => $criteria['user_id']];
 
@@ -208,7 +202,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function sumAmounts(array $criteria): float
     {
-        // TODO: Implement sumAmounts() method.
         $query = "SELECT SUM(amount_cents) AS total_cents FROM expenses WHERE user_id = :user_id";
         $params = ['user_id' => $criteria['user_id']];
 

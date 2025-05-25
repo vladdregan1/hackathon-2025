@@ -17,13 +17,14 @@ class AuthController extends BaseController
         Twig $view,
         private AuthService $authService,
         private LoggerInterface $logger,
+
     ) {
         parent::__construct($view);
     }
 
     public function showRegister(Request $request, Response $response): Response
     {
-        // TODO: you also have a logger service that you can inject and use anywhere; file is var/app.log
+
         $this->logger->info('Register page requested');
 
         return $this->render($response, 'auth/register.twig');
@@ -42,7 +43,6 @@ class AuthController extends BaseController
 
     public function register(Request $request, Response $response): Response
     {
-        // TODO: call corresponding service to perform user registration
         $userData = $this->getUserData($request);
         $username = $userData['username'];
         $password = $userData['password'];
@@ -87,7 +87,7 @@ class AuthController extends BaseController
 
     public function login(Request $request, Response $response): Response
     {
-        // TODO: call corresponding service to perform user login, handle login failures
+
         $userData = $this->getUserData($request);
         $username = $userData['username'];
         $password = $userData['password'];
@@ -108,7 +108,6 @@ class AuthController extends BaseController
 
     public function logout(Request $request, Response $response): Response
     {
-        // TODO: handle logout by clearing session data and destroying session
 
         session_destroy();
 
