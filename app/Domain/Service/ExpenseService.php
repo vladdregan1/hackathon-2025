@@ -10,11 +10,13 @@ use App\Domain\Repository\ExpenseRepositoryInterface;
 use App\Validators\ExpenseValidator;
 use DateTimeImmutable;
 use Psr\Http\Message\UploadedFileInterface;
+use Psr\Log\LoggerInterface;
 
 class ExpenseService
 {
     public function __construct(
         private readonly ExpenseRepositoryInterface $expenses,
+        private LoggerInterface $logger,
     ) {}
 
     public function list(User $user, int $year, int $month, int $pageNumber, int $pageSize): array
@@ -92,7 +94,92 @@ class ExpenseService
         // TODO: process rows in file stream, create and persist entities
         // TODO: for extra points wrap the whole import in a transaction and rollback only in case writing to DB fails
 
-        return 0; // number of imported rows
+        $handle = $this->prepareStream($csvFile);
+        $importedCount = 0;
+        $seenRows = [];
+        $skippedRows = [];
+
+        try {
+            while (($row = fgetcsv($handle)) !== false) {
+                if ($this->processCsvRow($user, $row, $skippedRows, $seenRows)) {
+                    $importedCount++;
+                }
+            }
+
+            $this->logSkippedRows($skippedRows);
+            $this->logger->info("Import finished. Total imported: {$importedCount}");
+        } finally {
+            fclose($handle);
+        }
+        return $importedCount;
+    }
+
+    private function processCsvRow(User $user, array $row, array &$skippedRows, array &$seenRows): bool
+    {
+        if ($this->isEmptyRow($row)) {
+            $skippedRows[] = ['reason' => 'empty row', 'row' => $row];
+            return false;
+        }
+        $hash = $this->hashRow($row);
+        if (isset($seenRows[$hash])) {
+            $skippedRows[] = ['reason' => 'duplicate row', 'row' => $row];
+            return false;
+        }
+        $seenRows[$hash] = true;
+
+        $data = $this->parseCsvRow($row);
+
+        if (!$this->isValidCategory($data['category'])) {
+            $skippedRows[] = ['reason' => 'invalid category', 'row' => $row];
+            return false;
+        }
+        if (!$this->validateExpenseData($data)) {
+            $skippedRows[] = ['reason' => 'invalid data', 'row' => $row];
+            return false;
+        }
+
+        $this->createExpenseFromData($user, $data);
+        return true;
+    }
+
+    private function logSkippedRows(array $skippedRows): void
+    {
+        foreach ($skippedRows as $entry) {
+            $this->logger->warning('Skipped CSV row', [
+                'reason' => $entry['reason'],
+                'row' => array_map('trim', $entry['row']),
+            ]);
+        }
+    }
+
+    private function isEmptyRow(array $row): bool
+    {
+        return count(array_filter($row)) === 0;
+    }
+
+    private function parseCsvRow(array $row): array
+    {
+        [$date, $description, $amount, $category] = array_map('trim', $row + [null, null, null, null]);
+
+        return [
+            'date' => $date,
+            'description' => $description,
+            'amount' => $amount,
+            'category' => $category,
+        ];
+    }
+
+    private function validateExpenseData(array $data): bool
+    {
+        $errors = ExpenseValidator::validateExpenseData($data);
+        return empty($errors);
+    }
+
+    private function createExpenseFromData(User $user, array $data): void
+    {
+        $dateObj = new DateTimeImmutable($data['date']);
+        $amountFloat = (float)$data['amount'];
+        $this->create($user, $amountFloat, $data['description'], $dateObj, $data['category']);
     }
 
     public function count(User $user, int $year, int $month): int
@@ -118,5 +205,48 @@ class ExpenseService
     {
         $this->expenses->delete($expenseId);
     }
+
+    public function getCategories(): array
+    {
+        $categories = [
+            'groceries' => 'Groceries',
+            'utilities' => 'Utilities',
+            'transport' => 'Transport',
+            'entertainment' => 'Entertainment',
+            'housing' => 'Housing',
+            'health' => 'Healthcare',
+            'other' => 'Other',
+        ];
+
+        return $categories;
+    }
+
+    private function prepareStream(UploadedFileInterface $csvFile)
+    {
+        $stream = $csvFile->getStream();
+        $handle = fopen('php://temp', 'r+');
+        $source = $stream->detach();
+        stream_copy_to_stream($source, $handle);
+        rewind($handle);
+        return $handle;
+    }
+
+    private function isValidCategory(string $category): bool
+    {
+        static $categories = null;
+        if ($categories === null) {
+            $categories = $this->getCategories();
+        }
+
+        return in_array($category, $categories, true);
+    }
+
+    private function hashRow(array $row): string
+    {
+        $normalizedRow = array_map('trim', $row);
+        return md5(json_encode($normalizedRow));
+    }
+
+
 
 }

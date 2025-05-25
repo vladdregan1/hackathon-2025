@@ -66,20 +66,6 @@ class ExpenseController extends BaseController
         ]));
     }
 
-    public function getCategories(): array
-    {
-        $categories = [
-            'groceries' => 'Groceries',
-            'utilities' => 'Utilities',
-            'transport' => 'Transport',
-            'entertainment' => 'Entertainment',
-            'housing' => 'Housing',
-            'health' => 'Healthcare',
-            'other' => 'Other',
-        ];
-
-        return $categories;
-    }
 
     public function create(Request $request, Response $response): Response
     {
@@ -89,7 +75,7 @@ class ExpenseController extends BaseController
         // - obtain the list of available categories from configuration and pass to the view
         $userData = $this->getCurrentUserData();
 
-        $categories = $this->getCategories();
+        $categories = $this->expenseService->getCategories();
 
         $data = array_merge($userData, [
             'categories' => $categories,
@@ -123,7 +109,7 @@ class ExpenseController extends BaseController
         $dateString = $data['date'] ?? '';
         $category = $data['category'] ?? '';
         $date = new \DateTimeImmutable($data['date']);
-        $categories = $this->getCategories();
+        $categories = $this->expenseService->getCategories();
 
 
         if (!empty($errors)) {
@@ -176,14 +162,14 @@ class ExpenseController extends BaseController
             return $response->withStatus(403);
         }
 
-        $categories = $this->getCategories();
+        $categories = $this->expenseService->getCategories();
 
 
         $amountFloat = $expense->amountCents / 100;
 
         $userData = $this->getCurrentUserData();
 
-        $categories = $this->getCategories();
+        $categories = $this->expenseService->getCategories();
 
         $data =array_merge($userData,[
             'expense' => [
@@ -259,7 +245,7 @@ class ExpenseController extends BaseController
 
         $data = (array)$request->getParsedBody();
         $errors = ExpenseValidator::validateExpenseData($data);
-        $categories = $this->getCategories();
+        $categories = $this->expenseService->getCategories();
 
         if (!empty($errors)) {
             return $this->renderEditWithErrors($response, $expense, $data, $categories, $errors);
@@ -307,5 +293,41 @@ class ExpenseController extends BaseController
 
         return $response;
     }
+
+    private function validateCsvUpload(array $uploadedFiles, Response $response): ?Response
+    {
+        if (!isset($uploadedFiles['csv'])) {
+            $response->getBody()->write("CSV file is required.");
+            return $response->withStatus(400);
+        }
+        return null;
+    }
+
+
+    public function import(Request $request, Response$response, array $args): Response
+    {
+
+        $userId = $_SESSION['user_id'] ?? null;
+        $user = $this->userRepository->find($userId);
+
+        $uploadedFiles = $request->getUploadedFiles();
+
+        $validationResponse = $this->validateCsvUpload($uploadedFiles, $response);
+        if ($validationResponse !== null) {
+            return $validationResponse;
+        }
+
+        $csvFile = $uploadedFiles['csv'];
+
+        try {
+            $importedCount = $this->expenseService->importFromCsv($user, $csvFile);
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        } catch (\Exception $e) {
+            return $response->withHeader('Location', '/expenses/import')->withStatus(302);
+        }
+    }
+
+
+
 
 }
