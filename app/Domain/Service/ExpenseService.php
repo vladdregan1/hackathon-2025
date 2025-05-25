@@ -114,4 +114,9 @@ class ExpenseService
         return $this->expenses->find($id);
     }
 
+    public function deleteExpense(int $expenseId): void
+    {
+        $this->expenses->delete($expenseId);
+    }
+
 }

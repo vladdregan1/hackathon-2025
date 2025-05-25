@@ -61,10 +61,6 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         }
     }
 
-    public function saveUpdate(Expense $expense): void
-    {
-
-    }
 
     public function delete(int $id): void
     {

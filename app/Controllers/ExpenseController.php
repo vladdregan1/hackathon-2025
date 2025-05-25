@@ -6,7 +6,6 @@ namespace App\Controllers;
 
 use App\Domain\Repository\UserRepositoryInterface;
 use App\Domain\Service\ExpenseService;
-use App\Infrastructure\Persistence\PdoUserRepository;
 use App\Validators\ExpenseValidator;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -290,6 +289,21 @@ class ExpenseController extends BaseController
         // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
         // - call the repository method to delete the expense
         // - redirect to the "expenses.index" page
+
+        $expenseId = $this->getExpenseIdFromRoute($routeParams);
+        $expense = $this->expenseService->getExpenseById($expenseId);
+
+        if (!$this->isOwner($expense)){
+            return $response->withStatus(403);
+        }
+
+        try {
+            $this->expenseService->deleteExpense($expenseId);
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        } catch (\Exception $e) {
+            $response->getBody()->write('An error occured while deleting the expense.');
+            return $response->withStatus(500);
+        }
 
         return $response;
     }
